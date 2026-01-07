@@ -1,0 +1,1717 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Hub Pro</title>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      box-sizing: border-box;
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    
+    .task-card {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-left: 4px solid transparent;
+    }
+    
+    .task-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+    
+    .task-card.priority-high {
+      border-left-color: #ef4444;
+    }
+    
+    .task-card.priority-medium {
+      border-left-color: #f59e0b;
+    }
+    
+    .task-card.priority-low {
+      border-left-color: #10b981;
+    }
+    
+    .view-button {
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    
+    .view-button.active {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      transform: scale(1.05);
+    }
+    
+    .kanban-column {
+      min-width: 300px;
+      max-width: 350px;
+    }
+    
+    .kanban-card {
+      transition: all 0.2s ease;
+      cursor: grab;
+    }
+    
+    .kanban-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+    
+    .kanban-card.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+    
+    .modal-backdrop {
+      animation: fadeIn 0.2s ease;
+    }
+    
+    .modal-content {
+      animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+      from { 
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    .stat-card {
+      transition: all 0.3s ease;
+      background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+    
+    .loading-spinner {
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      width: 20px;
+      height: 20px;
+      animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .timeline-item {
+      position: relative;
+      padding-left: 40px;
+      padding-bottom: 30px;
+    }
+    
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 0;
+      bottom: -30px;
+      width: 2px;
+      background: linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%);
+    }
+    
+    .timeline-item:last-child::before {
+      display: none;
+    }
+    
+    .timeline-dot {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: white;
+      border: 3px solid #6366f1;
+      z-index: 1;
+    }
+    
+    .time-tracker {
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .pomodoro-ring {
+      transform: rotate(-90deg);
+      transition: stroke-dashoffset 1s linear;
+    }
+    
+    .focus-mode {
+      filter: blur(8px);
+      pointer-events: none;
+      transition: filter 0.3s ease;
+    }
+    
+    .subtask-item {
+      transition: all 0.2s ease;
+    }
+    
+    .subtask-item:hover {
+      background: rgba(99, 102, 241, 0.05);
+    }
+    
+    .ai-suggestion {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+ </head>
+ <body class="h-full">
+  <div id="app" class="h-full w-full overflow-auto" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"><!-- Header -->
+   <header class="bg-white bg-opacity-95 backdrop-blur-xl shadow-2xl sticky top-0 z-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+     <div class="flex justify-between items-center flex-wrap gap-4">
+      <div>
+       <h1 id="app-title" class="text-4xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">Flow Hub Pro</h1>
+       <p id="app-subtitle" class="text-sm text-gray-600 mt-1 font-medium">Your All-in-One Productivity Command Center</p>
+      </div>
+      <div class="flex gap-3 items-center flex-wrap"><button id="ai-suggestions-btn" class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2"> <span>🤖</span> <span>AI Insights</span> </button> <button id="bulk-actions-btn" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2"> <span>⚡</span> <span>Bulk Actions</span> </button> <button id="export-btn" class="px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2"> <span>📥</span> <span>Export</span> </button> <button id="focus-mode-btn" class="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2"> <span>🎯</span> <span>Focus Mode</span> </button> <button id="add-task-btn" class="px-6 py-3 rounded-lg font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"> <span class="text-xl">+</span> <span id="add-task-button-text">Add New Task</span> </button>
+      </div>
+     </div>
+    </div>
+   </header>
+   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><!-- Stats Dashboard with Time Tracking -->
+    <div id="stats-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8"><!-- Stats will be inserted here -->
+    </div><!-- View Switcher (Notion/Trello style) -->
+    <div class="bg-white rounded-2xl shadow-2xl mb-6 p-4">
+     <div class="flex gap-3 flex-wrap"><button class="view-button active px-5 py-3 rounded-xl font-semibold transition-all" data-view="list"> 📋 List View </button> <button class="view-button px-5 py-3 rounded-xl font-semibold transition-all bg-gray-100 hover:bg-gray-200" data-view="kanban"> 📊 Kanban Board </button> <button class="view-button px-5 py-3 rounded-xl font-semibold transition-all bg-gray-100 hover:bg-gray-200" data-view="timeline"> 📅 Timeline </button> <button class="view-button px-5 py-3 rounded-xl font-semibold transition-all bg-gray-100 hover:bg-gray-200" data-view="calendar"> 🗓️ Calendar </button>
+     </div>
+    </div><!-- Smart Filters (Todoist style) -->
+    <div class="bg-white rounded-2xl shadow-2xl p-4 mb-6">
+     <div class="flex flex-wrap gap-4 items-center"><input type="text" id="smart-input" placeholder="Try: 'Buy milk tomorrow 3pm' or 'Meeting next Friday'" class="flex-1 min-w-[300px] px-4 py-3 border-2 border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-medium"> <select id="project-filter" class="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"> <option value="all">All Projects</option> </select> <select id="priority-filter" class="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"> <option value="all">All Priorities</option> <option value="high">🔴 High Priority</option> <option value="medium">🟡 Medium Priority</option> <option value="low">🟢 Low Priority</option> </select> <select id="sort-by" class="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"> <option value="created">📅 Created Date</option> <option value="due">⏰ Due Date</option> <option value="priority">⚡ Priority</option> <option value="time">⏱️ Time Spent</option> </select>
+     </div>
+    </div><!-- Main Content Area -->
+    <div id="content-container"><!-- Dynamic content based on view -->
+    </div>
+   </main><!-- Enhanced Task Modal (ClickUp/Notion style) -->
+   <div id="task-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-content">
+     <div class="p-6 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-purple-50 to-indigo-50">
+      <h2 id="modal-title" class="text-3xl font-bold text-gray-900">✨ Create New Task</h2><button id="close-modal" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">×</button>
+     </div>
+     <form id="task-form" class="p-6 space-y-5">
+      <div><label class="block text-sm font-bold text-gray-700 mb-2">📝 Task Title *</label> <input type="text" id="task-title" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg font-medium" placeholder="What needs to be done?">
+      </div>
+      <div><label class="block text-sm font-bold text-gray-700 mb-2">📄 Description</label> <textarea id="task-description" rows="4" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Add more details, context, or notes..."></textarea>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+       <div><label class="block text-sm font-bold text-gray-700 mb-2">📊 Status</label> <select id="task-status" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"> <option value="todo">📝 To Do</option> <option value="in-progress">🚀 In Progress</option> <option value="completed">✅ Completed</option> </select>
+       </div>
+       <div><label class="block text-sm font-bold text-gray-700 mb-2">⚡ Priority</label> <select id="task-priority" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"> <option value="low">🟢 Low</option> <option value="medium">🟡 Medium</option> <option value="high">🔴 High</option> </select>
+       </div>
+       <div><label class="block text-sm font-bold text-gray-700 mb-2">📅 Due Date</label> <input type="date" id="task-due-date" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium">
+       </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+       <div><label class="block text-sm font-bold text-gray-700 mb-2">📁 Project</label> <input type="text" id="task-project" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium" placeholder="Work, Personal, etc.">
+       </div>
+       <div><label class="block text-sm font-bold text-gray-700 mb-2">🏷️ Tags</label> <input type="text" id="task-tags" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium" placeholder="urgent, client, meeting">
+       </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+       <div><label class="block text-sm font-bold text-gray-700 mb-2">⏱️ Estimated Time (hours)</label> <input type="number" id="task-estimated-time" min="0" step="0.5" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium" placeholder="2.5">
+       </div>
+       <div><label class="block text-sm font-bold text-gray-700 mb-2">⏲️ Time Spent (hours)</label> <input type="number" id="task-time-spent" min="0" step="0.5" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium" placeholder="1.5">
+       </div>
+      </div>
+      <div><label class="block text-sm font-bold text-gray-700 mb-2">📋 Subtasks</label>
+       <div id="subtasks-container" class="space-y-2 mb-2"><!-- Subtasks will be added here -->
+       </div><button type="button" id="add-subtask-btn" class="text-purple-600 hover:text-purple-800 font-semibold text-sm flex items-center gap-1"> <span class="text-lg">+</span> Add Subtask </button>
+      </div>
+      <div class="flex items-center gap-3"><input type="checkbox" id="task-recurring" class="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"> <label for="task-recurring" class="text-sm font-bold text-gray-700">🔄 Recurring Task</label>
+      </div>
+      <div class="flex gap-3 pt-4"><button type="submit" id="save-task-btn" class="flex-1 px-6 py-4 rounded-xl font-bold text-white shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all text-lg" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"> 💾 Save Task </button> <button type="button" id="cancel-modal" class="px-6 py-4 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition-all"> Cancel </button>
+      </div>
+     </form>
+    </div>
+   </div><!-- Focus Mode Timer (Forest style) -->
+   <div id="focus-timer" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl p-8 z-50 text-center" style="width: 400px;">
+    <h3 class="text-2xl font-bold mb-6 text-gray-900">🎯 Focus Session</h3>
+    <div class="relative w-48 h-48 mx-auto mb-6">
+     <svg class="w-full h-full"><circle cx="96" cy="96" r="88" fill="none" stroke="#e5e7eb" stroke-width="8" /> <circle id="timer-ring" cx="96" cy="96" r="88" fill="none" stroke="url(#gradient)" stroke-width="8" class="pomodoro-ring" stroke-dasharray="552.92" stroke-dashoffset="0" /> <defs>
+       <lineargradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+       </lineargradient>
+      </defs>
+     </svg>
+     <div class="absolute inset-0 flex items-center justify-center"><span id="timer-display" class="text-5xl font-bold time-tracker">25:00</span>
+     </div>
+    </div>
+    <p id="timer-message" class="text-gray-600 mb-6 font-medium">Stay focused and watch your productivity tree grow! 🌱</p>
+    <div class="flex gap-3"><button id="start-timer" class="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold hover:shadow-lg transition-all"> ▶️ Start </button> <button id="pause-timer" class="flex-1 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl font-bold hover:shadow-lg transition-all"> ⏸️ Pause </button> <button id="stop-timer" class="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl font-bold hover:shadow-lg transition-all"> ⏹️ Stop </button>
+    </div><button id="close-focus" class="mt-4 text-gray-500 hover:text-gray-700 font-semibold">Close Focus Mode</button>
+   </div><!-- AI Insights Modal -->
+   <div id="ai-insights-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-content">
+     <div class="p-6 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-cyan-50 to-blue-50">
+      <h2 class="text-3xl font-bold text-gray-900">🤖 AI Productivity Insights</h2><button id="close-ai-modal" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">×</button>
+     </div>
+     <div class="p-6 space-y-6">
+      <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-6">
+       <h3 class="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2"><span>📊</span> Your Productivity Score</h3>
+       <div class="flex items-end gap-4">
+        <div class="text-6xl font-extrabold text-blue-600" id="productivity-score">
+         0
+        </div>
+        <div class="text-2xl text-gray-600 mb-2">
+         /100
+        </div>
+       </div>
+       <div class="mt-4 h-4 bg-gray-200 rounded-full overflow-hidden">
+        <div id="productivity-bar" class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-1000" style="width: 0%"></div>
+       </div>
+      </div>
+      <div id="insights-container" class="space-y-4"><!-- AI insights will be populated here -->
+      </div>
+      <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6">
+       <h3 class="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2"><span>💡</span> Smart Recommendations</h3>
+       <div id="recommendations-container" class="space-y-3"><!-- Recommendations will be populated here -->
+       </div>
+      </div>
+     </div>
+    </div>
+   </div><!-- Bulk Actions Modal -->
+   <div id="bulk-actions-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full modal-content">
+     <div class="p-6 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-emerald-50 to-green-50">
+      <h2 class="text-3xl font-bold text-gray-900">⚡ Bulk Actions</h2><button id="close-bulk-modal" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">×</button>
+     </div>
+     <div class="p-6 space-y-6">
+      <div class="bg-gray-50 rounded-2xl p-4">
+       <h3 class="text-lg font-bold text-gray-900 mb-3">Select Tasks to Modify</h3>
+       <div class="space-y-2 max-h-60 overflow-y-auto" id="bulk-task-list"><!-- Tasks will be populated here -->
+       </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+       <div><label class="block text-sm font-bold text-gray-700 mb-2">Change Status To</label> <select id="bulk-status" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"> <option value="">-- No Change --</option> <option value="todo">📝 To Do</option> <option value="in-progress">🚀 In Progress</option> <option value="completed">✅ Completed</option> </select>
+       </div>
+       <div><label class="block text-sm font-bold text-gray-700 mb-2">Change Priority To</label> <select id="bulk-priority" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"> <option value="">-- No Change --</option> <option value="low">🟢 Low</option> <option value="medium">🟡 Medium</option> <option value="high">🔴 High</option> </select>
+       </div>
+       <div><label class="block text-sm font-bold text-gray-700 mb-2">Add/Change Project</label> <input type="text" id="bulk-project" placeholder="Project name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
+       </div>
+       <div><label class="block text-sm font-bold text-gray-700 mb-2">Add Tags</label> <input type="text" id="bulk-tags" placeholder="tag1, tag2" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
+       </div>
+      </div>
+      <div class="flex gap-3 pt-4"><button id="apply-bulk-actions" class="flex-1 px-6 py-4 rounded-xl font-bold text-white shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all text-lg bg-gradient-to-r from-emerald-500 to-green-500"> ✨ Apply to Selected Tasks </button> <button id="bulk-delete-btn" class="px-6 py-4 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-all"> 🗑️ Delete Selected </button>
+      </div>
+     </div>
+    </div>
+   </div><!-- Export Modal -->
+   <div id="export-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full modal-content">
+     <div class="p-6 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-violet-50 to-purple-50">
+      <h2 class="text-3xl font-bold text-gray-900">📥 Export Your Data</h2><button id="close-export-modal" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">×</button>
+     </div>
+     <div class="p-6 space-y-6">
+      <p class="text-gray-600 text-lg">Choose your preferred export format to download your tasks and productivity data.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><button class="export-format-btn flex flex-col items-center gap-3 p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl hover:shadow-xl transition-all transform hover:scale-105" data-format="csv">
+        <div class="text-5xl">
+         📊
+        </div>
+        <div class="font-bold text-lg text-gray-900">
+         CSV Format
+        </div>
+        <div class="text-sm text-gray-600 text-center">
+         Excel &amp; Spreadsheets
+        </div></button> <button class="export-format-btn flex flex-col items-center gap-3 p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl hover:shadow-xl transition-all transform hover:scale-105" data-format="json">
+        <div class="text-5xl">
+         📋
+        </div>
+        <div class="font-bold text-lg text-gray-900">
+         JSON Format
+        </div>
+        <div class="text-sm text-gray-600 text-center">
+         Developer Friendly
+        </div></button> <button class="export-format-btn flex flex-col items-center gap-3 p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl hover:shadow-xl transition-all transform hover:scale-105" data-format="markdown">
+        <div class="text-5xl">
+         📝
+        </div>
+        <div class="font-bold text-lg text-gray-900">
+         Markdown
+        </div>
+        <div class="text-sm text-gray-600 text-center">
+         Notes &amp; Documentation
+        </div></button>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-6">
+       <h3 class="font-bold text-gray-900 mb-3">Export Options</h3>
+       <div class="space-y-3"><label class="flex items-center gap-3 cursor-pointer"> <input type="checkbox" id="export-completed" checked class="w-5 h-5 text-purple-600 rounded"> <span class="text-gray-700 font-medium">Include completed tasks</span> </label> <label class="flex items-center gap-3 cursor-pointer"> <input type="checkbox" id="export-subtasks" checked class="w-5 h-5 text-purple-600 rounded"> <span class="text-gray-700 font-medium">Include subtasks</span> </label> <label class="flex items-center gap-3 cursor-pointer"> <input type="checkbox" id="export-stats" checked class="w-5 h-5 text-purple-600 rounded"> <span class="text-gray-700 font-medium">Include productivity stats</span> </label>
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+  <script>
+    // Configuration
+    const defaultConfig = {
+      app_title: "Flow Hub Pro",
+      app_subtitle: "Your All-in-One Productivity Command Center",
+      add_task_button: "Add New Task",
+      empty_state_message: "No tasks yet. Create your first task to get started!",
+      kanban_header: "Kanban Board",
+      timeline_header: "Timeline",
+      primary_color: "#667eea",
+      secondary_color: "#764ba2",
+      background_color: "#f8fafc",
+      text_color: "#1f2937",
+      accent_color: "#8b5cf6"
+    };
+
+    let allTasks = [];
+    let currentView = 'list';
+    let currentFilter = 'all';
+    let currentSort = 'created';
+    let currentProject = 'all';
+    let searchQuery = '';
+    let editingTask = null;
+    let subtasks = [];
+    let selectedBulkTasks = new Set();
+    
+    // Focus Timer
+    let focusTimer = null;
+    let focusTimeLeft = 25 * 60; // 25 minutes in seconds
+    let focusRunning = false;
+
+    // Data SDK Handler
+    const dataHandler = {
+      onDataChanged(data) {
+        allTasks = data;
+        renderStats();
+        renderView();
+        updateProjectFilter();
+      }
+    };
+
+    // Element SDK Setup
+    async function onConfigChange(config) {
+      const appTitleEl = document.getElementById('app-title');
+      const appSubtitleEl = document.getElementById('app-subtitle');
+      const addTaskButtonTextEl = document.getElementById('add-task-button-text');
+
+      if (appTitleEl) appTitleEl.textContent = config.app_title || defaultConfig.app_title;
+      if (appSubtitleEl) appSubtitleEl.textContent = config.app_subtitle || defaultConfig.app_subtitle;
+      if (addTaskButtonTextEl) addTaskButtonTextEl.textContent = config.add_task_button || defaultConfig.add_task_button;
+
+      const primaryColor = config.primary_color || defaultConfig.primary_color;
+      const secondaryColor = config.secondary_color || defaultConfig.secondary_color;
+
+      document.getElementById('app').style.background = `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`;
+      document.getElementById('add-task-btn').style.background = `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`;
+      
+      const saveBtn = document.getElementById('save-task-btn');
+      if (saveBtn) {
+        saveBtn.style.background = `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`;
+      }
+    }
+
+    function mapToCapabilities(config) {
+      return {
+        recolorables: [
+          {
+            get: () => config.primary_color || defaultConfig.primary_color,
+            set: (value) => {
+              config.primary_color = value;
+              window.elementSdk.setConfig({ primary_color: value });
+            }
+          },
+          {
+            get: () => config.secondary_color || defaultConfig.secondary_color,
+            set: (value) => {
+              config.secondary_color = value;
+              window.elementSdk.setConfig({ secondary_color: value });
+            }
+          }
+        ],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+      };
+    }
+
+    function mapToEditPanelValues(config) {
+      return new Map([
+        ["app_title", config.app_title || defaultConfig.app_title],
+        ["app_subtitle", config.app_subtitle || defaultConfig.app_subtitle],
+        ["add_task_button", config.add_task_button || defaultConfig.add_task_button],
+        ["empty_state_message", config.empty_state_message || defaultConfig.empty_state_message],
+        ["kanban_header", config.kanban_header || defaultConfig.kanban_header],
+        ["timeline_header", config.timeline_header || defaultConfig.timeline_header]
+      ]);
+    }
+
+    // Initialize SDKs
+    async function initializeApp() {
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig,
+          onConfigChange,
+          mapToCapabilities,
+          mapToEditPanelValues
+        });
+      }
+
+      const initResult = await window.dataSdk.init(dataHandler);
+      if (!initResult.isOk) {
+        console.error("Failed to initialize data SDK");
+      }
+    }
+
+    // Smart Input Parser (Todoist style)
+    function parseSmartInput(input) {
+      const parsed = {
+        title: input,
+        dueDate: null,
+        priority: 'medium',
+        project: ''
+      };
+
+      // Parse priority
+      if (/\b(urgent|important|high|!!)\b/i.test(input)) {
+        parsed.priority = 'high';
+        parsed.title = parsed.title.replace(/\b(urgent|important|high|!!)\b/gi, '').trim();
+      }
+
+      // Parse relative dates
+      const tomorrow = /\btomorrow\b/i;
+      const nextWeek = /\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
+      const today = /\btoday\b/i;
+
+      if (tomorrow.test(input)) {
+        const date = new Date();
+        date.setDate(date.getDate() + 1);
+        parsed.dueDate = date.toISOString().split('T')[0];
+        parsed.title = parsed.title.replace(tomorrow, '').trim();
+      } else if (today.test(input)) {
+        parsed.dueDate = new Date().toISOString().split('T')[0];
+        parsed.title = parsed.title.replace(today, '').trim();
+      } else if (nextWeek.test(input)) {
+        const match = input.match(nextWeek);
+        const dayName = match[1];
+        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const targetDay = days.indexOf(dayName.toLowerCase());
+        const today = new Date();
+        const currentDay = today.getDay();
+        let daysToAdd = targetDay - currentDay;
+        if (daysToAdd <= 0) daysToAdd += 7;
+        const date = new Date();
+        date.setDate(date.getDate() + daysToAdd);
+        parsed.dueDate = date.toISOString().split('T')[0];
+        parsed.title = parsed.title.replace(nextWeek, '').trim();
+      }
+
+      return parsed;
+    }
+
+    // Stats Rendering (RescueTime style insights)
+    function renderStats() {
+      const totalTasks = allTasks.length;
+      const completedTasks = allTasks.filter(t => t.status === 'completed').length;
+      const inProgressTasks = allTasks.filter(t => t.status === 'in-progress').length;
+      const highPriorityTasks = allTasks.filter(t => t.priority === 'high' && t.status !== 'completed').length;
+      const totalTimeSpent = allTasks.reduce((sum, t) => sum + (parseFloat(t.time_spent) || 0), 0).toFixed(1);
+
+      const statsContainer = document.getElementById('stats-container');
+      statsContainer.innerHTML = `
+        <div class="stat-card rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all">
+          <div class="text-4xl mb-3">📊</div>
+          <div class="text-4xl font-extrabold text-gray-900">${totalTasks}</div>
+          <div class="text-sm text-gray-600 font-semibold mt-1">Total Tasks</div>
+        </div>
+        <div class="stat-card rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all">
+          <div class="text-4xl mb-3">✅</div>
+          <div class="text-4xl font-extrabold text-green-600">${completedTasks}</div>
+          <div class="text-sm text-gray-600 font-semibold mt-1">Completed</div>
+        </div>
+        <div class="stat-card rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all">
+          <div class="text-4xl mb-3">🚀</div>
+          <div class="text-4xl font-extrabold text-blue-600">${inProgressTasks}</div>
+          <div class="text-sm text-gray-600 font-semibold mt-1">In Progress</div>
+        </div>
+        <div class="stat-card rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all">
+          <div class="text-4xl mb-3">🔥</div>
+          <div class="text-4xl font-extrabold text-red-600">${highPriorityTasks}</div>
+          <div class="text-sm text-gray-600 font-semibold mt-1">High Priority</div>
+        </div>
+        <div class="stat-card rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all">
+          <div class="text-4xl mb-3">⏱️</div>
+          <div class="text-4xl font-extrabold text-purple-600">${totalTimeSpent}h</div>
+          <div class="text-sm text-gray-600 font-semibold mt-1">Time Tracked</div>
+        </div>
+      `;
+    }
+
+    // Update Project Filter
+    function updateProjectFilter() {
+      const projects = [...new Set(allTasks.map(t => t.project).filter(p => p))];
+      const projectFilter = document.getElementById('project-filter');
+      const currentValue = projectFilter.value;
+      
+      projectFilter.innerHTML = '<option value="all">All Projects</option>' +
+        projects.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+      
+      if (projects.includes(currentValue)) {
+        projectFilter.value = currentValue;
+      }
+    }
+
+    // View Rendering
+    function renderView() {
+      const container = document.getElementById('content-container');
+      
+      switch(currentView) {
+        case 'list':
+          renderListView(container);
+          break;
+        case 'kanban':
+          renderKanbanView(container);
+          break;
+        case 'timeline':
+          renderTimelineView(container);
+          break;
+        case 'calendar':
+          renderCalendarView(container);
+          break;
+      }
+    }
+
+    // List View
+    function renderListView(container) {
+      let filteredTasks = getFilteredTasks();
+
+      if (filteredTasks.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-20">
+            <div class="text-8xl mb-6">📋</div>
+            <p class="text-2xl text-white font-bold">${escapeHtml(defaultConfig.empty_state_message)}</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="space-y-4">
+          ${filteredTasks.map(task => createTaskCard(task)).join('')}
+        </div>
+      `;
+    }
+
+    // Kanban View (Trello style)
+    function renderKanbanView(container) {
+      const columns = ['todo', 'in-progress', 'completed'];
+      const columnNames = {
+        'todo': '📝 To Do',
+        'in-progress': '🚀 In Progress',
+        'completed': '✅ Completed'
+      };
+
+      let filteredTasks = getFilteredTasks();
+
+      container.innerHTML = `
+        <div class="overflow-x-auto pb-4">
+          <div class="flex gap-6" style="min-width: min-content;">
+            ${columns.map(status => {
+              const tasks = filteredTasks.filter(t => t.status === status);
+              return `
+                <div class="kanban-column bg-gray-100 rounded-2xl p-4" data-status="${status}">
+                  <h3 class="text-xl font-bold mb-4 text-gray-800 flex justify-between items-center">
+                    <span>${columnNames[status]}</span>
+                    <span class="text-sm bg-white px-3 py-1 rounded-full">${tasks.length}</span>
+                  </h3>
+                  <div class="space-y-3" data-column="${status}">
+                    ${tasks.map(task => createKanbanCard(task)).join('')}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Timeline View (ClickUp style)
+    function renderTimelineView(container) {
+      let filteredTasks = getFilteredTasks();
+      const sortedTasks = [...filteredTasks].sort((a, b) => {
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date) - new Date(b.due_date);
+      });
+
+      if (sortedTasks.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-20">
+            <div class="text-8xl mb-6">📅</div>
+            <p class="text-2xl text-white font-bold">No tasks with due dates yet!</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+          <h2 class="text-3xl font-bold mb-8 text-gray-900">📅 ${defaultConfig.timeline_header}</h2>
+          <div class="space-y-6">
+            ${sortedTasks.map(task => createTimelineItem(task)).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Calendar View
+    function renderCalendarView(container) {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startingDayOfWeek = firstDay.getDay();
+
+      const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"];
+
+      let calendar = `
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+          <h2 class="text-3xl font-bold mb-6 text-gray-900">🗓️ ${monthNames[month]} ${year}</h2>
+          <div class="grid grid-cols-7 gap-2">
+            ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => 
+              `<div class="text-center font-bold text-gray-600 py-2">${day}</div>`
+            ).join('')}
+      `;
+
+      // Empty cells before first day
+      for (let i = 0; i < startingDayOfWeek; i++) {
+        calendar += '<div class="aspect-square"></div>';
+      }
+
+      // Days of month
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateStr = date.toISOString().split('T')[0];
+        const tasksOnDay = allTasks.filter(t => t.due_date === dateStr);
+        const isToday = day === today.getDate() && month === today.getMonth();
+
+        calendar += `
+          <div class="aspect-square border-2 ${isToday ? 'border-purple-500 bg-purple-50' : 'border-gray-200'} rounded-xl p-2 hover:bg-gray-50 transition-all">
+            <div class="font-semibold text-sm ${isToday ? 'text-purple-700' : 'text-gray-700'}">${day}</div>
+            ${tasksOnDay.length > 0 ? `
+              <div class="mt-1">
+                ${tasksOnDay.slice(0, 3).map(task => `
+                  <div class="text-xs truncate mb-1 px-1 py-0.5 rounded ${
+                    task.priority === 'high' ? 'bg-red-100 text-red-700' : 
+                    task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 
+                    'bg-blue-100 text-blue-700'
+                  }">${escapeHtml(task.title)}</div>
+                `).join('')}
+                ${tasksOnDay.length > 3 ? `<div class="text-xs text-gray-500">+${tasksOnDay.length - 3} more</div>` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      calendar += '</div></div>';
+      container.innerHTML = calendar;
+    }
+
+    function getFilteredTasks() {
+      let filtered = [...allTasks];
+
+      if (currentProject !== 'all') {
+        filtered = filtered.filter(t => t.project === currentProject);
+      }
+
+      if (currentFilter !== 'all') {
+        filtered = filtered.filter(t => t.priority === currentFilter);
+      }
+
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(t => 
+          t.title.toLowerCase().includes(query) || 
+          (t.description && t.description.toLowerCase().includes(query)) ||
+          (t.tags && t.tags.toLowerCase().includes(query)) ||
+          (t.project && t.project.toLowerCase().includes(query))
+        );
+      }
+
+      filtered.sort((a, b) => {
+        if (currentSort === 'created') {
+          return new Date(b.created_at) - new Date(a.created_at);
+        } else if (currentSort === 'due') {
+          if (!a.due_date) return 1;
+          if (!b.due_date) return -1;
+          return new Date(a.due_date) - new Date(b.due_date);
+        } else if (currentSort === 'priority') {
+          const priorityOrder = { high: 0, medium: 1, low: 2 };
+          return priorityOrder[a.priority] - priorityOrder[b.priority];
+        } else if (currentSort === 'time') {
+          return (parseFloat(b.time_spent) || 0) - (parseFloat(a.time_spent) || 0);
+        }
+        return 0;
+      });
+
+      return filtered;
+    }
+
+    function createTaskCard(task) {
+      const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No due date';
+      const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed';
+      const tags = task.tags ? task.tags.split(',').map(t => t.trim()).filter(t => t) : [];
+      const timeProgress = task.estimated_time ? ((parseFloat(task.time_spent) || 0) / parseFloat(task.estimated_time) * 100).toFixed(0) : 0;
+      
+      const statusColors = {
+        'todo': 'bg-gray-100 text-gray-700',
+        'in-progress': 'bg-blue-100 text-blue-700',
+        'completed': 'bg-green-100 text-green-700'
+      };
+      
+      const statusLabels = {
+        'todo': '📝 To Do',
+        'in-progress': '🚀 In Progress',
+        'completed': '✅ Completed'
+      };
+
+      return `
+        <div class="task-card bg-white rounded-2xl shadow-xl p-6 priority-${task.priority}" data-task-id="${task.__backendId}">
+          <div class="flex justify-between items-start mb-4">
+            <div class="flex-1">
+              <h3 class="text-2xl font-bold text-gray-900 mb-2">${escapeHtml(task.title)}</h3>
+              ${task.project ? `<span class="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold mb-2">📁 ${escapeHtml(task.project)}</span>` : ''}
+            </div>
+            <div class="flex gap-2 ml-4">
+              <button class="edit-task-btn text-blue-600 hover:text-blue-800 font-bold px-4 py-2 rounded-lg hover:bg-blue-50 transition-all" data-task-id="${task.__backendId}">
+                ✏️ Edit
+              </button>
+              <button class="delete-task-btn text-red-600 hover:text-red-800 font-bold px-4 py-2 rounded-lg hover:bg-red-50 transition-all" data-task-id="${task.__backendId}">
+                🗑️ Delete
+              </button>
+            </div>
+          </div>
+          
+          ${task.description ? `<p class="text-gray-600 mb-4 text-lg">${escapeHtml(task.description)}</p>` : ''}
+          
+          <div class="flex flex-wrap gap-2 mb-4">
+            <span class="px-4 py-2 rounded-full text-sm font-bold ${statusColors[task.status]}">
+              ${statusLabels[task.status]}
+            </span>
+            <span class="px-4 py-2 rounded-full text-sm font-bold ${task.priority === 'high' ? 'bg-red-100 text-red-700' : task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}">
+              ${task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢'} ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+            </span>
+            <span class="px-4 py-2 rounded-full text-sm font-bold ${isOverdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}">
+              📅 ${dueDate}
+            </span>
+            ${task.estimated_time ? `
+              <span class="px-4 py-2 rounded-full text-sm font-bold bg-purple-100 text-purple-700">
+                ⏱️ ${task.time_spent || 0}h / ${task.estimated_time}h (${timeProgress}%)
+              </span>
+            ` : ''}
+          </div>
+          
+          ${tags.length > 0 ? `
+            <div class="flex flex-wrap gap-2 mb-4">
+              ${tags.map(tag => `<span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">🏷️ ${escapeHtml(tag)}</span>`).join('')}
+            </div>
+          ` : ''}
+          
+          ${task.subtasks ? `
+            <div class="mt-4 pt-4 border-t border-gray-200">
+              <h4 class="font-bold text-gray-700 mb-2">📋 Subtasks:</h4>
+              <div class="space-y-1">
+                ${task.subtasks.split('|||').filter(s => s).map(subtask => {
+                  const [text, done] = subtask.split('::');
+                  return `
+                    <div class="flex items-center gap-2 text-sm ${done === 'true' ? 'line-through text-gray-400' : 'text-gray-700'}">
+                      <span>${done === 'true' ? '✅' : '⬜'}</span>
+                      <span>${escapeHtml(text)}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function createKanbanCard(task) {
+      const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
+      const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed';
+
+      return `
+        <div class="kanban-card bg-white rounded-xl p-4 shadow-md border-l-4 ${
+          task.priority === 'high' ? 'border-red-500' : 
+          task.priority === 'medium' ? 'border-yellow-500' : 
+          'border-green-500'
+        }" data-task-id="${task.__backendId}">
+          <h4 class="font-bold text-gray-900 mb-2">${escapeHtml(task.title)}</h4>
+          ${task.description ? `<p class="text-sm text-gray-600 mb-3 line-clamp-2">${escapeHtml(task.description)}</p>` : ''}
+          <div class="flex items-center justify-between text-xs">
+            <span class="px-2 py-1 rounded-full font-semibold ${
+              task.priority === 'high' ? 'bg-red-100 text-red-700' : 
+              task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 
+              'bg-green-100 text-green-700'
+            }">
+              ${task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢'}
+            </span>
+            ${dueDate ? `<span class="${isOverdue ? 'text-red-600 font-bold' : 'text-gray-600'}">📅 ${dueDate}</span>` : ''}
+          </div>
+          ${task.project ? `<div class="mt-2 text-xs text-indigo-600 font-semibold">📁 ${escapeHtml(task.project)}</div>` : ''}
+          <div class="mt-3 flex gap-2">
+            <button class="edit-task-btn text-xs text-blue-600 hover:text-blue-800 font-semibold" data-task-id="${task.__backendId}">Edit</button>
+            <button class="delete-task-btn text-xs text-red-600 hover:text-red-800 font-semibold" data-task-id="${task.__backendId}">Delete</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function createTimelineItem(task) {
+      const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'No due date';
+      const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed';
+
+      return `
+        <div class="timeline-item">
+          <div class="timeline-dot ${isOverdue ? 'border-red-500' : ''}"></div>
+          <div class="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-all">
+            <div class="flex justify-between items-start mb-2">
+              <h4 class="text-xl font-bold text-gray-900">${escapeHtml(task.title)}</h4>
+              <span class="px-3 py-1 rounded-full text-xs font-bold ${
+                task.priority === 'high' ? 'bg-red-100 text-red-700' : 
+                task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 
+                'bg-green-100 text-green-700'
+              }">
+                ${task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢'} ${task.priority}
+              </span>
+            </div>
+            ${task.description ? `<p class="text-gray-600 mb-3">${escapeHtml(task.description)}</p>` : ''}
+            <div class="flex items-center gap-4 text-sm">
+              <span class="${isOverdue ? 'text-red-600 font-bold' : 'text-gray-600'}">
+                📅 ${dueDate}
+              </span>
+              ${task.project ? `<span class="text-indigo-600 font-semibold">📁 ${escapeHtml(task.project)}</span>` : ''}
+              <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                task.status === 'completed' ? 'bg-green-100 text-green-700' : 
+                task.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 
+                'bg-gray-100 text-gray-700'
+              }">
+                ${task.status === 'completed' ? '✅' : task.status === 'in-progress' ? '🚀' : '📝'} ${task.status}
+              </span>
+            </div>
+            <div class="mt-3 flex gap-2">
+              <button class="edit-task-btn text-sm text-blue-600 hover:text-blue-800 font-semibold px-3 py-1 rounded hover:bg-blue-50" data-task-id="${task.__backendId}">Edit</button>
+              <button class="delete-task-btn text-sm text-red-600 hover:text-red-800 font-semibold px-3 py-1 rounded hover:bg-red-50" data-task-id="${task.__backendId}">Delete</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Modal Functions
+    function openModal(task = null) {
+      editingTask = task;
+      const modal = document.getElementById('task-modal');
+      const modalTitle = document.getElementById('modal-title');
+      const form = document.getElementById('task-form');
+      
+      modalTitle.textContent = task ? '✏️ Edit Task' : '✨ Create New Task';
+      
+      if (task) {
+        document.getElementById('task-title').value = task.title;
+        document.getElementById('task-description').value = task.description || '';
+        document.getElementById('task-status').value = task.status;
+        document.getElementById('task-priority').value = task.priority;
+        document.getElementById('task-due-date').value = task.due_date || '';
+        document.getElementById('task-tags').value = task.tags || '';
+        document.getElementById('task-project').value = task.project || '';
+        document.getElementById('task-estimated-time').value = task.estimated_time || '';
+        document.getElementById('task-time-spent').value = task.time_spent || '';
+        document.getElementById('task-recurring').checked = task.is_recurring === 'true';
+        
+        // Load subtasks
+        subtasks = task.subtasks ? task.subtasks.split('|||').filter(s => s).map(s => {
+          const [text, done] = s.split('::');
+          return { text, done: done === 'true' };
+        }) : [];
+        renderSubtasks();
+      } else {
+        form.reset();
+        subtasks = [];
+        renderSubtasks();
+      }
+      
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('task-modal').classList.add('hidden');
+      document.getElementById('task-form').reset();
+      editingTask = null;
+      subtasks = [];
+    }
+
+    function renderSubtasks() {
+      const container = document.getElementById('subtasks-container');
+      container.innerHTML = subtasks.map((st, idx) => `
+        <div class="subtask-item flex items-center gap-2 p-2 rounded-lg">
+          <input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask(${idx})" class="w-4 h-4 text-purple-600 rounded">
+          <input type="text" value="${escapeHtml(st.text)}" onchange="updateSubtask(${idx}, this.value)" class="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <button type="button" onclick="removeSubtask(${idx})" class="text-red-600 hover:text-red-800 font-bold">×</button>
+        </div>
+      `).join('');
+    }
+
+    window.toggleSubtask = (idx) => {
+      subtasks[idx].done = !subtasks[idx].done;
+    };
+
+    window.updateSubtask = (idx, value) => {
+      subtasks[idx].text = value;
+    };
+
+    window.removeSubtask = (idx) => {
+      subtasks.splice(idx, 1);
+      renderSubtasks();
+    };
+
+    // Task Operations
+    async function saveTask(event) {
+      event.preventDefault();
+      
+      const saveBtn = document.getElementById('save-task-btn');
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<div class="loading-spinner mx-auto"></div>';
+      saveBtn.disabled = true;
+
+      const title = document.getElementById('task-title').value.trim();
+      const description = document.getElementById('task-description').value.trim();
+      const status = document.getElementById('task-status').value;
+      const priority = document.getElementById('task-priority').value;
+      const dueDate = document.getElementById('task-due-date').value;
+      const tags = document.getElementById('task-tags').value.trim();
+      const project = document.getElementById('task-project').value.trim();
+      const estimatedTime = document.getElementById('task-estimated-time').value;
+      const timeSpent = document.getElementById('task-time-spent').value;
+      const isRecurring = document.getElementById('task-recurring').checked;
+
+      const taskData = {
+        title,
+        description,
+        status,
+        priority,
+        due_date: dueDate,
+        tags,
+        project,
+        estimated_time: estimatedTime,
+        time_spent: timeSpent,
+        is_recurring: isRecurring.toString(),
+        subtasks: subtasks.map(st => `${st.text}::${st.done}`).join('|||'),
+        notes: '',
+        completed_at: status === 'completed' && (!editingTask || editingTask.status !== 'completed') ? new Date().toISOString() : (editingTask?.completed_at || '')
+      };
+
+      let result;
+      if (editingTask) {
+        result = await window.dataSdk.update({
+          ...editingTask,
+          ...taskData
+        });
+      } else {
+        if (allTasks.length >= 999) {
+          saveBtn.innerHTML = originalText;
+          saveBtn.disabled = false;
+          showNotification('Maximum limit of 999 tasks reached. Please delete some tasks first.', 'error');
+          return;
+        }
+        result = await window.dataSdk.create({
+          ...taskData,
+          created_at: new Date().toISOString(),
+          view_type: 'list'
+        });
+      }
+
+      saveBtn.innerHTML = originalText;
+      saveBtn.disabled = false;
+
+      if (result.isOk) {
+        closeModal();
+        showNotification(editingTask ? '✅ Task updated successfully!' : '✨ Task created successfully!', 'success');
+      } else {
+        showNotification('❌ Failed to save task. Please try again.', 'error');
+      }
+    }
+
+    async function deleteTask(taskId) {
+      const task = allTasks.find(t => t.__backendId === taskId);
+      if (!task) return;
+
+      const card = document.querySelector(`[data-task-id="${taskId}"]`);
+      const deleteBtn = card.querySelector('.delete-task-btn');
+      
+      if (deleteBtn.textContent.includes('Confirm')) {
+        deleteBtn.innerHTML = '<div class="loading-spinner mx-auto" style="width: 16px; height: 16px; border-width: 2px; border-color: rgba(239, 68, 68, 0.3); border-top-color: #ef4444;"></div>';
+        deleteBtn.disabled = true;
+
+        const result = await window.dataSdk.delete(task);
+
+        if (result.isOk) {
+          showNotification('✅ Task deleted successfully!', 'success');
+        } else {
+          deleteBtn.textContent = '🗑️ Delete';
+          deleteBtn.disabled = false;
+          showNotification('❌ Failed to delete task. Please try again.', 'error');
+        }
+      } else {
+        const originalText = deleteBtn.innerHTML;
+        deleteBtn.innerHTML = '⚠️ Confirm?';
+        setTimeout(() => {
+          if (deleteBtn.innerHTML === '⚠️ Confirm?') {
+            deleteBtn.innerHTML = originalText;
+          }
+        }, 3000);
+      }
+    }
+
+    // Focus Mode Timer
+    function startFocusMode() {
+      document.getElementById('focus-timer').classList.remove('hidden');
+      document.querySelector('main').classList.add('focus-mode');
+    }
+
+    function closeFocusMode() {
+      document.getElementById('focus-timer').classList.add('hidden');
+      document.querySelector('main').classList.remove('focus-mode');
+      stopTimer();
+    }
+
+    function startTimer() {
+      if (focusRunning) return;
+      focusRunning = true;
+      
+      focusTimer = setInterval(() => {
+        if (focusTimeLeft > 0) {
+          focusTimeLeft--;
+          updateTimerDisplay();
+        } else {
+          stopTimer();
+          showNotification('🎉 Focus session complete! Great job!', 'success');
+          document.getElementById('timer-message').textContent = '🌳 Your tree has grown! Take a break and celebrate!';
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      focusRunning = false;
+      if (focusTimer) {
+        clearInterval(focusTimer);
+        focusTimer = null;
+      }
+    }
+
+    function stopTimer() {
+      pauseTimer();
+      focusTimeLeft = 25 * 60;
+      updateTimerDisplay();
+      document.getElementById('timer-message').textContent = 'Stay focused and watch your productivity tree grow! 🌱';
+    }
+
+    function updateTimerDisplay() {
+      const minutes = Math.floor(focusTimeLeft / 60);
+      const seconds = focusTimeLeft % 60;
+      document.getElementById('timer-display').textContent = 
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      
+      const totalTime = 25 * 60;
+      const progress = (totalTime - focusTimeLeft) / totalTime;
+      const circumference = 552.92;
+      const offset = circumference * progress;
+      document.getElementById('timer-ring').style.strokeDashoffset = offset;
+    }
+
+    function showNotification(message, type) {
+      const notification = document.createElement('div');
+      notification.className = `fixed bottom-8 right-8 px-8 py-4 rounded-2xl shadow-2xl text-white font-bold z-50 text-lg ${type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-red-500 to-pink-600'}`;
+      notification.textContent = message;
+      notification.style.animation = 'slideUp 0.3s ease';
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'fadeIn 0.2s ease reverse';
+        setTimeout(() => notification.remove(), 200);
+      }, 3000);
+    }
+
+    // AI Insights Functions
+    function generateAIInsights() {
+      const totalTasks = allTasks.length;
+      const completedTasks = allTasks.filter(t => t.status === 'completed').length;
+      const completionRate = totalTasks > 0 ? (completedTasks / totalTasks * 100).toFixed(1) : 0;
+      const highPriorityTasks = allTasks.filter(t => t.priority === 'high' && t.status !== 'completed').length;
+      const overdueTasks = allTasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'completed').length;
+      const totalTimeSpent = allTasks.reduce((sum, t) => sum + (parseFloat(t.time_spent) || 0), 0);
+      const avgTimePerTask = totalTasks > 0 ? (totalTimeSpent / totalTasks).toFixed(1) : 0;
+
+      // Calculate productivity score
+      let score = 50; // Base score
+      score += completionRate * 0.3; // Up to 30 points for completion rate
+      score -= highPriorityTasks * 2; // Lose points for pending high priority
+      score -= overdueTasks * 3; // Lose points for overdue tasks
+      if (totalTimeSpent > 10) score += 10; // Bonus for time tracking
+      score = Math.max(0, Math.min(100, Math.round(score)));
+
+      document.getElementById('productivity-score').textContent = score;
+      document.getElementById('productivity-bar').style.width = score + '%';
+
+      // Generate insights
+      const insights = [];
+      
+      if (completionRate > 75) {
+        insights.push({
+          icon: '🎉',
+          title: 'Excellent Completion Rate!',
+          description: `You've completed ${completionRate}% of your tasks. Keep up the amazing work!`,
+          type: 'success'
+        });
+      } else if (completionRate < 30) {
+        insights.push({
+          icon: '⚠️',
+          title: 'Low Completion Rate',
+          description: `Only ${completionRate}% of tasks are done. Consider breaking tasks into smaller pieces.`,
+          type: 'warning'
+        });
+      }
+
+      if (overdueTasks > 0) {
+        insights.push({
+          icon: '🚨',
+          title: `${overdueTasks} Overdue Task${overdueTasks > 1 ? 's' : ''}`,
+          description: 'Focus on completing overdue tasks first to stay on track.',
+          type: 'danger'
+        });
+      }
+
+      if (highPriorityTasks > 5) {
+        insights.push({
+          icon: '🔥',
+          title: 'Too Many High Priority Tasks',
+          description: `You have ${highPriorityTasks} high priority tasks. Consider re-prioritizing.`,
+          type: 'warning'
+        });
+      }
+
+      if (totalTimeSpent > 40) {
+        insights.push({
+          icon: '⏱️',
+          title: 'Great Time Tracking!',
+          description: `You've logged ${totalTimeSpent.toFixed(1)} hours. Time tracking helps identify productivity patterns.`,
+          type: 'info'
+        });
+      }
+
+      if (allTasks.length === 0) {
+        insights.push({
+          icon: '📝',
+          title: 'No Tasks Yet',
+          description: 'Start by creating your first task to begin tracking your productivity!',
+          type: 'info'
+        });
+      }
+
+      const insightsContainer = document.getElementById('insights-container');
+      insightsContainer.innerHTML = insights.map(insight => `
+        <div class="bg-${insight.type === 'success' ? 'green' : insight.type === 'danger' ? 'red' : insight.type === 'warning' ? 'yellow' : 'blue'}-50 rounded-2xl p-4 border-l-4 border-${insight.type === 'success' ? 'green' : insight.type === 'danger' ? 'red' : insight.type === 'warning' ? 'yellow' : 'blue'}-500">
+          <div class="flex items-start gap-3">
+            <div class="text-3xl">${insight.icon}</div>
+            <div>
+              <h4 class="font-bold text-gray-900 mb-1">${insight.title}</h4>
+              <p class="text-gray-600 text-sm">${insight.description}</p>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      // Generate recommendations
+      const recommendations = [];
+      
+      if (overdueTasks > 0) {
+        recommendations.push('📌 Start with your overdue tasks to get back on schedule');
+      }
+      
+      if (highPriorityTasks > 0) {
+        recommendations.push('🎯 Focus on high priority tasks during your peak energy hours');
+      }
+      
+      const tasksWithoutDueDate = allTasks.filter(t => !t.due_date && t.status !== 'completed').length;
+      if (tasksWithoutDueDate > 3) {
+        recommendations.push(`📅 Add due dates to ${tasksWithoutDueDate} tasks for better planning`);
+      }
+      
+      const tasksWithoutProject = allTasks.filter(t => !t.project).length;
+      if (tasksWithoutProject > 5) {
+        recommendations.push(`📁 Organize ${tasksWithoutProject} tasks into projects for better clarity`);
+      }
+      
+      if (totalTasks > 20 && completionRate < 50) {
+        recommendations.push('✂️ Consider archiving or deleting tasks that are no longer relevant');
+      }
+      
+      if (recommendations.length === 0) {
+        recommendations.push('🌟 You\'re doing great! Keep maintaining your productive habits.');
+      }
+
+      const recommendationsContainer = document.getElementById('recommendations-container');
+      recommendationsContainer.innerHTML = recommendations.map(rec => `
+        <div class="flex items-start gap-3 bg-white rounded-xl p-4 shadow-sm">
+          <div class="text-xl">${rec.substring(0, 2)}</div>
+          <p class="text-gray-700 font-medium">${rec.substring(3)}</p>
+        </div>
+      `).join('');
+    }
+
+    // Bulk Actions Functions
+    function openBulkActionsModal() {
+      selectedBulkTasks.clear();
+      const bulkTaskList = document.getElementById('bulk-task-list');
+      
+      if (allTasks.length === 0) {
+        bulkTaskList.innerHTML = '<p class="text-gray-500 text-center py-8">No tasks available</p>';
+      } else {
+        bulkTaskList.innerHTML = allTasks.map(task => `
+          <label class="flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg cursor-pointer transition-all">
+            <input type="checkbox" class="bulk-task-checkbox w-5 h-5 text-emerald-600 rounded" data-task-id="${task.__backendId}">
+            <div class="flex-1">
+              <div class="font-semibold text-gray-900">${escapeHtml(task.title)}</div>
+              <div class="text-sm text-gray-500">
+                ${task.status === 'completed' ? '✅' : task.status === 'in-progress' ? '🚀' : '📝'} 
+                ${task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢'}
+                ${task.project ? ' • ' + escapeHtml(task.project) : ''}
+              </div>
+            </div>
+          </label>
+        `).join('');
+
+        // Add event listeners to checkboxes
+        document.querySelectorAll('.bulk-task-checkbox').forEach(checkbox => {
+          checkbox.addEventListener('change', (e) => {
+            const taskId = e.target.dataset.taskId;
+            if (e.target.checked) {
+              selectedBulkTasks.add(taskId);
+            } else {
+              selectedBulkTasks.delete(taskId);
+            }
+          });
+        });
+      }
+
+      document.getElementById('bulk-actions-modal').classList.remove('hidden');
+    }
+
+    async function applyBulkActions() {
+      if (selectedBulkTasks.size === 0) {
+        showNotification('⚠️ Please select at least one task', 'warning');
+        return;
+      }
+
+      const bulkStatus = document.getElementById('bulk-status').value;
+      const bulkPriority = document.getElementById('bulk-priority').value;
+      const bulkProject = document.getElementById('bulk-project').value.trim();
+      const bulkTags = document.getElementById('bulk-tags').value.trim();
+
+      const applyBtn = document.getElementById('apply-bulk-actions');
+      const originalText = applyBtn.innerHTML;
+      applyBtn.innerHTML = '<div class="loading-spinner mx-auto"></div>';
+      applyBtn.disabled = true;
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const taskId of selectedBulkTasks) {
+        const task = allTasks.find(t => t.__backendId === taskId);
+        if (!task) continue;
+
+        const updatedTask = { ...task };
+        
+        if (bulkStatus) updatedTask.status = bulkStatus;
+        if (bulkPriority) updatedTask.priority = bulkPriority;
+        if (bulkProject) updatedTask.project = bulkProject;
+        if (bulkTags) {
+          const existingTags = task.tags ? task.tags.split(',').map(t => t.trim()) : [];
+          const newTags = bulkTags.split(',').map(t => t.trim());
+          updatedTask.tags = [...new Set([...existingTags, ...newTags])].join(', ');
+        }
+
+        const result = await window.dataSdk.update(updatedTask);
+        if (result.isOk) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      }
+
+      applyBtn.innerHTML = originalText;
+      applyBtn.disabled = false;
+
+      if (errorCount === 0) {
+        showNotification(`✅ Successfully updated ${successCount} task${successCount > 1 ? 's' : ''}!`, 'success');
+        document.getElementById('bulk-actions-modal').classList.add('hidden');
+      } else {
+        showNotification(`⚠️ Updated ${successCount} tasks, ${errorCount} failed`, 'warning');
+      }
+    }
+
+    async function bulkDeleteTasks() {
+      if (selectedBulkTasks.size === 0) {
+        showNotification('⚠️ Please select at least one task', 'warning');
+        return;
+      }
+
+      const deleteBtn = document.getElementById('bulk-delete-btn');
+      
+      if (deleteBtn.textContent.includes('Confirm')) {
+        const originalText = deleteBtn.innerHTML;
+        deleteBtn.innerHTML = '<div class="loading-spinner mx-auto" style="width: 20px; height: 20px; border-width: 2px;"></div>';
+        deleteBtn.disabled = true;
+
+        let successCount = 0;
+
+        for (const taskId of selectedBulkTasks) {
+          const task = allTasks.find(t => t.__backendId === taskId);
+          if (task) {
+            const result = await window.dataSdk.delete(task);
+            if (result.isOk) successCount++;
+          }
+        }
+
+        deleteBtn.innerHTML = originalText;
+        deleteBtn.disabled = false;
+        
+        showNotification(`✅ Successfully deleted ${successCount} task${successCount > 1 ? 's' : ''}!`, 'success');
+        document.getElementById('bulk-actions-modal').classList.add('hidden');
+      } else {
+        deleteBtn.innerHTML = `⚠️ Confirm Delete ${selectedBulkTasks.size} Tasks?`;
+        setTimeout(() => {
+          if (deleteBtn.innerHTML.includes('Confirm')) {
+            deleteBtn.textContent = '🗑️ Delete Selected';
+          }
+        }, 3000);
+      }
+    }
+
+    // Export Functions
+    function exportToCSV() {
+      const includeCompleted = document.getElementById('export-completed').checked;
+      const includeSubtasks = document.getElementById('export-subtasks').checked;
+      const includeStats = document.getElementById('export-stats').checked;
+
+      let tasks = includeCompleted ? allTasks : allTasks.filter(t => t.status !== 'completed');
+
+      let csv = 'Title,Description,Status,Priority,Due Date,Project,Tags,Estimated Time,Time Spent,Created At,Completed At\n';
+      
+      tasks.forEach(task => {
+        const row = [
+          `"${task.title.replace(/"/g, '""')}"`,
+          `"${(task.description || '').replace(/"/g, '""')}"`,
+          task.status,
+          task.priority,
+          task.due_date || '',
+          task.project || '',
+          task.tags || '',
+          task.estimated_time || '',
+          task.time_spent || '',
+          task.created_at,
+          task.completed_at || ''
+        ];
+        csv += row.join(',') + '\n';
+
+        if (includeSubtasks && task.subtasks) {
+          const subtasksList = task.subtasks.split('|||').filter(s => s);
+          subtasksList.forEach(st => {
+            const [text, done] = st.split('::');
+            csv += `"  └ ${text.replace(/"/g, '""')}",,,,,,,,,,"${done === 'true' ? 'Done' : 'Pending'}"\n`;
+          });
+        }
+      });
+
+      if (includeStats) {
+        csv += '\n\n--- PRODUCTIVITY STATS ---\n';
+        csv += `Total Tasks,${allTasks.length}\n`;
+        csv += `Completed Tasks,${allTasks.filter(t => t.status === 'completed').length}\n`;
+        csv += `In Progress Tasks,${allTasks.filter(t => t.status === 'in-progress').length}\n`;
+        csv += `Total Time Tracked,${allTasks.reduce((sum, t) => sum + (parseFloat(t.time_spent) || 0), 0).toFixed(1)} hours\n`;
+      }
+
+      downloadFile('flow-hub-tasks.csv', csv, 'text/csv');
+      showNotification('📊 CSV exported successfully!', 'success');
+    }
+
+    function exportToJSON() {
+      const includeCompleted = document.getElementById('export-completed').checked;
+      const includeStats = document.getElementById('export-stats').checked;
+
+      let tasks = includeCompleted ? allTasks : allTasks.filter(t => t.status !== 'completed');
+
+      const exportData = {
+        tasks: tasks,
+        exportDate: new Date().toISOString()
+      };
+
+      if (includeStats) {
+        exportData.stats = {
+          totalTasks: allTasks.length,
+          completedTasks: allTasks.filter(t => t.status === 'completed').length,
+          inProgressTasks: allTasks.filter(t => t.status === 'in-progress').length,
+          totalTimeTracked: allTasks.reduce((sum, t) => sum + (parseFloat(t.time_spent) || 0), 0).toFixed(1)
+        };
+      }
+
+      const json = JSON.stringify(exportData, null, 2);
+      downloadFile('flow-hub-tasks.json', json, 'application/json');
+      showNotification('📋 JSON exported successfully!', 'success');
+    }
+
+    function exportToMarkdown() {
+      const includeCompleted = document.getElementById('export-completed').checked;
+      const includeSubtasks = document.getElementById('export-subtasks').checked;
+      const includeStats = document.getElementById('export-stats').checked;
+
+      let tasks = includeCompleted ? allTasks : allTasks.filter(t => t.status !== 'completed');
+
+      let md = '# Flow Hub Pro - Task Export\n\n';
+      md += `**Export Date:** ${new Date().toLocaleDateString()}\n\n`;
+
+      if (includeStats) {
+        md += '## 📊 Productivity Stats\n\n';
+        md += `- **Total Tasks:** ${allTasks.length}\n`;
+        md += `- **Completed:** ${allTasks.filter(t => t.status === 'completed').length}\n`;
+        md += `- **In Progress:** ${allTasks.filter(t => t.status === 'in-progress').length}\n`;
+        md += `- **Total Time Tracked:** ${allTasks.reduce((sum, t) => sum + (parseFloat(t.time_spent) || 0), 0).toFixed(1)} hours\n\n`;
+      }
+
+      // Group by status
+      const statuses = ['todo', 'in-progress', 'completed'];
+      const statusNames = { 'todo': '📝 To Do', 'in-progress': '🚀 In Progress', 'completed': '✅ Completed' };
+
+      statuses.forEach(status => {
+        const statusTasks = tasks.filter(t => t.status === status);
+        if (statusTasks.length > 0) {
+          md += `## ${statusNames[status]}\n\n`;
+          
+          statusTasks.forEach(task => {
+            const priorityIcon = task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢';
+            md += `### ${priorityIcon} ${task.title}\n\n`;
+            
+            if (task.description) md += `${task.description}\n\n`;
+            
+            md += `- **Status:** ${status}\n`;
+            md += `- **Priority:** ${task.priority}\n`;
+            if (task.due_date) md += `- **Due Date:** ${task.due_date}\n`;
+            if (task.project) md += `- **Project:** ${task.project}\n`;
+            if (task.tags) md += `- **Tags:** ${task.tags}\n`;
+            if (task.estimated_time) md += `- **Estimated Time:** ${task.estimated_time}h\n`;
+            if (task.time_spent) md += `- **Time Spent:** ${task.time_spent}h\n`;
+            
+            if (includeSubtasks && task.subtasks) {
+              const subtasksList = task.subtasks.split('|||').filter(s => s);
+              if (subtasksList.length > 0) {
+                md += '\n**Subtasks:**\n\n';
+                subtasksList.forEach(st => {
+                  const [text, done] = st.split('::');
+                  md += `- [${done === 'true' ? 'x' : ' '}] ${text}\n`;
+                });
+              }
+            }
+            
+            md += '\n---\n\n';
+          });
+        }
+      });
+
+      downloadFile('flow-hub-tasks.md', md, 'text/markdown');
+      showNotification('📝 Markdown exported successfully!', 'success');
+    }
+
+    function downloadFile(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeApp();
+
+      document.getElementById('add-task-btn').addEventListener('click', () => openModal());
+      document.getElementById('close-modal').addEventListener('click', closeModal);
+      document.getElementById('cancel-modal').addEventListener('click', closeModal);
+      document.getElementById('task-form').addEventListener('submit', saveTask);
+
+      document.getElementById('add-subtask-btn').addEventListener('click', () => {
+        subtasks.push({ text: '', done: false });
+        renderSubtasks();
+      });
+
+      // View switcher
+      document.querySelectorAll('.view-button').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.view-button').forEach(b => {
+            b.classList.remove('active');
+            b.classList.add('bg-gray-100', 'hover:bg-gray-200');
+          });
+          e.target.classList.add('active');
+          e.target.classList.remove('bg-gray-100', 'hover:bg-gray-200');
+          currentView = e.target.dataset.view;
+          renderView();
+        });
+      });
+
+      // Smart input
+      document.getElementById('smart-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          const parsed = parseSmartInput(e.target.value);
+          e.target.value = '';
+          
+          // Auto-create task
+          const task = {
+            title: parsed.title,
+            description: '',
+            status: 'todo',
+            priority: parsed.priority,
+            due_date: parsed.dueDate || '',
+            tags: '',
+            project: parsed.project,
+            estimated_time: '',
+            time_spent: '',
+            is_recurring: 'false',
+            subtasks: '',
+            notes: '',
+            created_at: new Date().toISOString(),
+            view_type: 'list',
+            completed_at: ''
+          };
+          
+          window.dataSdk.create(task).then(result => {
+            if (result.isOk) {
+              showNotification('✨ Task created from smart input!', 'success');
+            }
+          });
+        }
+      });
+
+      // Filters
+      document.getElementById('project-filter').addEventListener('change', (e) => {
+        currentProject = e.target.value;
+        renderView();
+      });
+
+      document.getElementById('priority-filter').addEventListener('change', (e) => {
+        currentFilter = e.target.value;
+        renderView();
+      });
+
+      document.getElementById('sort-by').addEventListener('change', (e) => {
+        currentSort = e.target.value;
+        renderView();
+      });
+
+      // Focus mode
+      document.getElementById('focus-mode-btn').addEventListener('click', startFocusMode);
+      document.getElementById('close-focus').addEventListener('click', closeFocusMode);
+      document.getElementById('start-timer').addEventListener('click', startTimer);
+      document.getElementById('pause-timer').addEventListener('click', pauseTimer);
+      document.getElementById('stop-timer').addEventListener('click', stopTimer);
+
+      // AI Insights
+      document.getElementById('ai-suggestions-btn').addEventListener('click', () => {
+        generateAIInsights();
+        document.getElementById('ai-insights-modal').classList.remove('hidden');
+      });
+      document.getElementById('close-ai-modal').addEventListener('click', () => {
+        document.getElementById('ai-insights-modal').classList.add('hidden');
+      });
+
+      // Bulk Actions
+      document.getElementById('bulk-actions-btn').addEventListener('click', openBulkActionsModal);
+      document.getElementById('close-bulk-modal').addEventListener('click', () => {
+        document.getElementById('bulk-actions-modal').classList.add('hidden');
+      });
+      document.getElementById('apply-bulk-actions').addEventListener('click', applyBulkActions);
+      document.getElementById('bulk-delete-btn').addEventListener('click', bulkDeleteTasks);
+
+      // Export
+      document.getElementById('export-btn').addEventListener('click', () => {
+        document.getElementById('export-modal').classList.remove('hidden');
+      });
+      document.getElementById('close-export-modal').addEventListener('click', () => {
+        document.getElementById('export-modal').classList.add('hidden');
+      });
+      
+      document.querySelectorAll('.export-format-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const format = e.currentTarget.dataset.format;
+          if (format === 'csv') exportToCSV();
+          else if (format === 'json') exportToJSON();
+          else if (format === 'markdown') exportToMarkdown();
+          document.getElementById('export-modal').classList.add('hidden');
+        });
+      });
+
+      // Task actions (event delegation)
+      document.getElementById('content-container').addEventListener('click', (e) => {
+        if (e.target.classList.contains('edit-task-btn')) {
+          const taskId = e.target.dataset.taskId;
+          const task = allTasks.find(t => t.__backendId === taskId);
+          if (task) openModal(task);
+        } else if (e.target.classList.contains('delete-task-btn')) {
+          const taskId = e.target.dataset.taskId;
+          deleteTask(taskId);
+        }
+      });
+
+      document.getElementById('task-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'task-modal') {
+          closeModal();
+        }
+      });
+    });
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ba5e86e21a9e6ac',t:'MTc2NzgxNDYyNy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
